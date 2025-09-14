@@ -15,6 +15,21 @@
   <title>Naija Truths - Category</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&family=Bebas+Neue&display=swap">
   <link rel="stylesheet" href="main.css">
+  <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js"></script>
+  <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"></script>
+  <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js"></script>
+  <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js"></script>
+  <script>
+    // Define environment variables for local testing
+    window.env = window.env || {};
+    window.env.VITE_FIREBASE_API_KEY = 'AIzaSyDrzSgCHn53kfa4dJJVJhDD717v8SPozR0';
+    window.env.VITE_FIREBASE_AUTH_DOMAIN = 'naija-truths.firebaseapp.com';
+    window.env.VITE_FIREBASE_PROJECT_ID = 'naija-truths';
+    window.env.VITE_FIREBASE_STORAGE_BUCKET = 'naija-truths.firebasestorage.app';
+    window.env.VITE_FIREBASE_MESSAGING_SENDER_ID = '476936659655';
+    window.env.VITE_FIREBASE_APP_ID = '1:476936659655:web:0df8b9419012dac9e014e2';
+    window.env.VITE_FIREBASE_MEASUREMENT_ID = 'G-69WH8S8X8H';
+  </script>
   <script type="module" src="main.js"></script>
 </head>
 <body>
@@ -22,6 +37,7 @@
     <div class="spinner"></div>
   </div>
   <header class="header">
+    <!-- Header content identical to index.html -->
     <div class="logo">
       <svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg">
         <defs>
