@@ -16,13 +16,13 @@ const maxRetries = 3;
 
 // Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: window.env?.VITE_FIREBASE_API_KEY,
-  authDomain: window.env?.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: window.env?.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: window.env?.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: window.env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: window.env?.VITE_FIREBASE_APP_ID,
-  measurementId: window.env?.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || window.env?.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || window.env?.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || window.env?.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || window.env?.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || window.env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || window.env?.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID || window.env?.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -30,10 +30,9 @@ async function initializeFirebase() {
   try {
     // Validate that all required config fields are present
     const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-    for (const field of requiredFields) {
-      if (!firebaseConfig[field]) {
-        throw new Error(`Missing Firebase config field: ${field}. Check environment variables in Netlify.`);
-      }
+    const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing Firebase config fields: ${missingFields.join(', ')}. Check environment variables in Netlify or local .env file.`);
     }
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
@@ -41,7 +40,7 @@ async function initializeFirebase() {
     storage = getStorage(app);
     console.log('Firebase initialized successfully');
   } catch (error) {
-    console.error('Firebase initialization failed:', error.code, error.message);
+    console.error('Firebase initialization failed:', error.code || 'unknown', error.message);
     displayErrorMessage('body', `Failed to connect to the database: ${error.message}. Please check your internet connection or refresh the page.`);
     throw error; // Rethrow to prevent further execution
   }
@@ -71,7 +70,7 @@ async function withRetry(fn, retries = maxRetries, delay = 1000) {
       if (attempt === retries) {
         throw error;
       }
-      console.warn(`Retry ${attempt} failed:`, error.code, error.message);
+      console.warn(`Retry ${attempt} failed:`, error.code || 'unknown', error.message);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -156,7 +155,7 @@ async function loadArticles() {
         elements[0].innerHTML = '<li>No trending stories available.</li>';
       }
     } catch (error) {
-      console.error(`Error loading ${selector}:`, error.code, error.message);
+      console.error(`Error loading ${selector}:`, error.code || 'unknown', error.message);
       displayErrorMessage(selector, `Failed to load articles: ${error.message}.`);
     }
   }
@@ -173,7 +172,7 @@ async function loadArticles() {
       document.title = `Naija Truths - ${article.title || 'Breaking News'}`;
     }
   } catch (error) {
-    console.error('Error updating meta tags:', error.code, error.message);
+    console.error('Error updating meta tags:', error.code || 'unknown', error.message);
   }
 }
 
@@ -236,7 +235,7 @@ async function fetchPoliticsArticles(reset = false) {
     lastVisiblePolitics = snapshot.docs[snapshot.docs.length - 1];
     if (loadMoreButton) loadMoreButton.style.display = snapshot.size < articlesPerPage ? 'none' : 'block';
   } catch (error) {
-    console.error('Error loading politics articles:', error.code, error.message);
+    console.error('Error loading politics articles:', error.code || 'unknown', error.message);
     displayErrorMessage('#politics-articles', `Failed to load politics articles: ${error.message}.`);
   }
 }
@@ -298,7 +297,7 @@ async function fetchLatestNewsArticles(reset = false, loadMoreButton) {
     lastVisibleLatest = snapshot.docs[snapshot.docs.length - 1];
     if (loadMoreButton) loadMoreButton.style.display = snapshot.size < articlesPerPage ? 'none' : 'block';
   } catch (error) {
-    console.error('Error loading latest news articles:', error.code, error.message);
+    console.error('Error loading latest news articles:', error.code || 'unknown', error.message);
     displayErrorMessage('#latest-news-articles', `Failed to load articles: ${error.message}.`);
   }
 }
@@ -376,7 +375,7 @@ async function fetchCategoryArticles(category, subcategory, reset = false) {
     lastVisibleCategory = snapshot.docs[snapshot.docs.length - 1];
     if (loadMoreButton) loadMoreButton.style.display = snapshot.size < articlesPerPage ? 'none' : 'block';
   } catch (error) {
-    console.error('Error loading category articles:', error.code, error.message);
+    console.error('Error loading category articles:', error.code || 'unknown', error.message);
     displayErrorMessage('#category-articles', `Failed to load articles: ${error.message}.`);
   }
 }
@@ -442,7 +441,7 @@ async function loadArticle() {
       displayErrorMessage('#article-content', 'Article not found.');
     }
   } catch (error) {
-    console.error('Error loading article:', error.code, error.message);
+    console.error('Error loading article:', error.code || 'unknown', error.message);
     displayErrorMessage('#article-content', `Failed to load article: ${error.message}.`);
   }
 }
@@ -494,7 +493,7 @@ async function loadComments(articleId) {
               replyForm.remove();
               loadReplies(articleId, commentId);
             } catch (error) {
-              console.error('Error adding reply:', error.code, error.message);
+              console.error('Error adding reply:', error.code || 'unknown', error.message);
               displayErrorMessage(`.reply-list[data-comment-id="${commentId}"]`, `Failed to post reply: ${error.message}.`);
             }
           }
@@ -502,7 +501,7 @@ async function loadComments(articleId) {
       });
     });
   } catch (error) {
-    console.error('Error loading comments:', error.code, error.message);
+    console.error('Error loading comments:', error.code || 'unknown', error.message);
     displayErrorMessage('#comment-list', `Failed to load comments: ${error.message}.`);
   }
 }
@@ -526,7 +525,7 @@ async function loadReplies(articleId, commentId) {
       replyList.appendChild(replyElement);
     });
   } catch (error) {
-    console.error('Error loading replies:', error.code, error.message);
+    console.error('Error loading replies:', error.code || 'unknown', error.message);
     displayErrorMessage(`.reply-list[data-comment-id="${commentId}"]`, `Failed to load replies: ${error.message}.`);
   }
 }
@@ -571,7 +570,7 @@ async function loadSearchResults() {
       searchResults.appendChild(articleElement);
     });
   } catch (error) {
-    console.error('Error loading search results:', error.code, error.message);
+    console.error('Error loading search results:', error.code || 'unknown', error.message);
     displayErrorMessage('#search-results', `Failed to load search results: ${error.message}.`);
   }
 }
@@ -594,7 +593,7 @@ if (loginForm) {
         await signOut(auth);
       }
     } catch (error) {
-      console.error('Login error:', error.code, error.message);
+      console.error('Login error:', error.code || 'unknown', error.message);
       displayErrorMessage('#admin-login-form', `Login failed: ${error.message}.`);
     }
   });
@@ -607,7 +606,7 @@ if (logoutButton) {
     signOut(auth).then(() => {
       window.location.href = 'index.html';
     }).catch(error => {
-      console.error('Logout error:', error.code, error.message);
+      console.error('Logout error:', error.code || 'unknown', error.message);
       displayErrorMessage('#admin-content', `Failed to log out: ${error.message}.`);
     });
   });
@@ -664,7 +663,7 @@ if (articleForm) {
         await uploadBytes(imageRef, imageFile);
         finalImageUrl = await getDownloadURL(imageRef);
       } catch (error) {
-        console.error('Image upload failed:', error.code, error.message);
+        console.error('Image upload failed:', error.code || 'unknown', error.message);
         displayErrorMessage('#article-form', `Failed to upload image: ${error.message}.`);
         return;
       }
@@ -676,7 +675,7 @@ if (articleForm) {
         await uploadBytes(videoRef, videoFile);
         finalVideoUrl = await getDownloadURL(videoRef);
       } catch (error) {
-        console.error('Video upload failed:', error.code, error.message);
+        console.error('Video upload failed:', error.code || 'unknown', error.message);
         displayErrorMessage('#article-form', `Failed to upload video: ${error.message}.`);
         return;
       }
@@ -711,7 +710,7 @@ if (articleForm) {
       document.getElementById('preview-section').style.display = 'none';
       loadAdminArticles();
     } catch (error) {
-      console.error('Error publishing article:', error.code, error.message);
+      console.error('Error publishing article:', error.code || 'unknown', error.message);
       displayErrorMessage('#article-form', `Failed to publish article: ${error.message}.`);
     }
   });
@@ -725,7 +724,7 @@ if (previewButton) {
     const summary = document.getElementById('article-summary-input').value;
     const content = quill ? quill.root.innerHTML : document.getElementById('article-content-input')?.value || '';
     const image = document.getElementById('article-image-input').value;
-    const video = document.getElementById('article-image-input').value;
+    const video = document.getElementById('article-video-input').value; // Fixed typo
     const category = document.getElementById('article-category-input').value;
     const subcategory = document.getElementById('article-subcategory-input')?.value || '';
     const verified = document.getElementById('article-verified-input').checked;
@@ -832,13 +831,13 @@ async function loadAdminArticles() {
           if (subcategoryInput) subcategoryInput.value = article.subcategory || '';
           document.getElementById('article-verified-input').checked = article.verified || false;
         } catch (error) {
-          console.error('Error loading article for editing:', error.code, error.message);
+          console.error('Error loading article for editing:', error.code || 'unknown', error.message);
           displayErrorMessage('#article-list', `Failed to load article for editing: ${error.message}.`);
         }
       });
     });
   } catch (error) {
-    console.error('Error loading admin articles:', error.code, error.message);
+    console.error('Error loading admin articles:', error.code || 'unknown', error.message);
     displayErrorMessage('#article-list', `Failed to load articles: ${error.message}.`);
   }
 }
@@ -860,7 +859,7 @@ document.querySelectorAll('.like-button').forEach(button => {
       try {
         await withRetry(() => updateDoc(doc(db, 'articles', articleId), { likes: increment(1) }));
       } catch (error) {
-        console.error('Error updating likes:', error.code, error.message);
+        console.error('Error updating likes:', error.code || 'unknown', error.message);
         displayErrorMessage('.article-card', `Failed to update likes: ${error.message}.`);
         likeCountSpan.textContent = count;
         button.classList.remove('liked');
@@ -891,7 +890,7 @@ document.querySelectorAll('.comment-submit').forEach(button => {
           commentInput.value = '';
           loadComments(articleId);
         } catch (error) {
-          console.error('Error adding comment:', error.code, error.message);
+          console.error('Error adding comment:', error.code || 'unknown', error.message);
           displayErrorMessage('#comment-list', `Failed to post comment: ${error.message}.`);
         }
       }
@@ -917,7 +916,7 @@ document.querySelectorAll('.save-button').forEach(button => {
         button.textContent = 'Saved';
         button.disabled = true;
       } catch (error) {
-        console.error('Error saving article:', error.code, error.message);
+        console.error('Error saving article:', error.code || 'unknown', error.message);
         displayErrorMessage('.article-card', `Failed to save article: ${error.message}.`);
       }
     }
@@ -1080,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', () => {
               window.location.href = 'admin.html';
             }
           }).catch(error => {
-            console.error('Error checking admin status:', error.code, error.message);
+            console.error('Error checking admin status:', error.code || 'unknown', error.message);
             displayErrorMessage('#admin-login-section', `Failed to verify admin status: ${error.message}.`);
           });
         }
@@ -1097,7 +1096,7 @@ document.addEventListener('DOMContentLoaded', () => {
               window.location.href = 'index.html';
             }
           }).catch(error => {
-            console.error('Error checking admin status:', error.code, error.message);
+            console.error('Error checking admin status:', error.code || 'unknown', error.message);
             displayErrorMessage('#admin-content', `Failed to verify admin status: ${error.message}.`);
             window.location.href = 'index.html';
           });
@@ -1132,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 300);
     }
   }).catch(error => {
-    console.error('DOM content load error:', error.code, error.message);
+    console.error('DOM content load error:', error.code || 'unknown', error.message);
     displayErrorMessage('body', `Failed to initialize the page: ${error.message}.`);
   });
 });
