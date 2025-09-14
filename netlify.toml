@@ -1,6 +1,6 @@
 [build]
-  publish = "public"
-  command = ""
+  publish = "." # Changed from "public" to root
+  command = "" # No build command needed for static site
 
 [build.environment]
   VITE_FIREBASE_API_KEY = "AIzaSyDrzSgCHn53kfa4dJJVJhDD717v8SPozR0"
