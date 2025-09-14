@@ -379,12 +379,15 @@ async function fetchCategoryArticles(category, subcategory, reset = false) {
 async function loadArticle() {
   const urlParams = new URLSearchParams(window.location.search);
   const articleId = urlParams.get('id');
+  console.log('Attempting to load article with ID:', articleId); // Debug log
   if (!db) {
-    displayErrorMessage('#article-content', 'Unable to load article. Database not initialized.');
+    console.error('Database not initialized');
+    displayErrorMessage('#article-content', 'Unable to load article: Database not initialized. Please check your Firebase configuration or internet connection.');
     return;
   }
   if (!articleId) {
-    displayErrorMessage('#article-content', 'No article ID provided. Please select an article.');
+    console.error('No article ID provided in URL');
+    displayErrorMessage('#article-content', 'No article ID provided in the URL. Please select an article from the homepage or check the link.');
     return;
   }
 
@@ -393,6 +396,7 @@ async function loadArticle() {
     const docSnap = await withRetry(() => getDoc(docRef));
     if (docSnap.exists()) {
       const article = docSnap.data();
+      console.log('Article loaded successfully:', article.title); // Debug log
       document.getElementById('article-title').textContent = article.title || 'Untitled Article';
       document.querySelector('meta[property="og:title"]').setAttribute('content', article.title || 'Naija Truths Article');
       document.querySelector('meta[name="description"]').setAttribute('content', article.summary || (article.content ? article.content.substring(0, 160) : 'Article from Naija Truths'));
@@ -433,11 +437,20 @@ async function loadArticle() {
       await withRetry(() => updateDoc(docRef, { views: increment(1) }));
       loadComments(articleId);
     } else {
-      displayErrorMessage('#article-content', 'Article not found.');
+      console.error('Article not found in Firestore for ID:', articleId);
+      displayErrorMessage('#article-content', `Article not found (ID: ${articleId}). It may have been deleted or the ID is incorrect. Check Firestore 'articles' collection or ensure the article exists.`);
     }
   } catch (error) {
-    console.error('Error loading article:', error.message);
-    displayErrorMessage('#article-content', 'Failed to load article. Please try again.');
+    console.error('Error loading article (ID:', articleId, '):', error.message, error.code); // Debug log with error code
+    let errorMessage = `Failed to load article (ID: ${articleId}): ${error.message}. `;
+    if (error.code === 'permission-denied') {
+      errorMessage += 'Check Firestore security rules to ensure public read access to the "articles" collection.';
+    } else if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+      errorMessage += 'Network issue detected. Check your internet connection and try again.';
+    } else {
+      errorMessage += 'Check Firestore for the article or try refreshing the page.';
+    }
+    displayErrorMessage('#article-content', errorMessage);
   }
 }
 
