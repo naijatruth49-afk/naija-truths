@@ -69,10 +69,6 @@
           <a href="index.html#politics" class="dropbtn" aria-haspopup="true" aria-expanded="false">Politics ▼</a>
           <div class="dropdown-content">
             <a href="category.html?cat=politics">All Politics</a>
-            <a href="category.html?cat=politics&subcat=elections">Elections</a>
-            <a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a>
-            <a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a>
-            <a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a>
           </div>
         </li>
         <li><a href="index.html#fact-check">Fact-Check</a></li>
@@ -106,10 +102,6 @@
         <li><a href="index.html" class="home-button" aria-label="Go to homepage">Home</a></li>
         <li><a href="index.html#breaking-news">Breaking News</a></li>
         <li><a href="index.html#politics">Politics</a></li>
-        <li><a href="category.html?cat=politics&subcat=elections">Elections</a></li>
-        <li><a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a></li>
-        <li><a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a></li>
-        <li><a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a></li>
         <li><a href="index.html#fact-check">Fact-Check</a></li>
         <li><a href="category.html?cat=economy-business">Economy & Business</a></li>
         <li><a href="category.html?cat=sports">Sports</a></li>
@@ -132,10 +124,10 @@
       <div class="content">
         <article class="article-card" data-id="">
           <h1 id="article-title">Loading Article...</h1>
-          <p id="article-subcategory" style="display: none;"></p>
           <p id="article-meta">By Anonymous</p>
+          <span id="article-breaking-news" class="breaking-news-badge" style="display: none;">Breaking News</span>
           <span id="article-verified" class="verified-badge" style="display: none;">Verified</span>
-          <img id="article-image" src="https://via.placeholder.com/800x400" alt="Article Image" style="display: none;" loading="lazy">
+          <img id="article-image" src="https://via.placeholder.com/800x400" alt="Article Image" style="display: none;" loading="lazy" onerror="this.src='https://via.placeholder.com/800x400'; console.warn('Article image failed to load:', this.src);">
           <video id="article-video" controls style="display: none;"></video>
           <div id="article-content">
             <p>Loading content...</p>
