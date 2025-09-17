@@ -83,8 +83,25 @@ function isValidUrl(string) {
 
 // Format timestamp for display
 function formatTimestamp(timestamp) {
-  if (!timestamp || !timestamp.toDate) return 'Unknown Date';
-  return timestamp.toDate().toLocaleDateString();
+  try {
+    if (!timestamp) {
+      console.warn('Timestamp is null or undefined');
+      return 'Date Unavailable';
+    }
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      const date = timestamp.toDate();
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid Firestore Timestamp:', timestamp);
+        return 'Date Unavailable';
+      }
+      return date.toLocaleDateString();
+    }
+    console.warn('Timestamp does not have toDate method:', timestamp);
+    return 'Date Unavailable';
+  } catch (error) {
+    console.error('Error formatting timestamp:', error.message, 'Timestamp:', timestamp);
+    return 'Date Unavailable';
+  }
 }
 
 // Initialize Quill editor
@@ -154,7 +171,7 @@ async function loadArticles() {
           element.dataset.id = doc.id;
           const link = element.querySelector('.article-link');
           const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/400x200';
-          console.log(`Rendering ${selector} article ID: ${doc.id}, Image URL: ${imageUrl}`);
+          console.log(`Rendering ${selector} article ID: ${doc.id}, Image URL: ${imageUrl}, CreatedAt:`, article.createdAt);
           const img = link.querySelector('img');
           img.src = ''; // Clear src to avoid stale images
           img.src = imageUrl; // Set new src
@@ -179,7 +196,9 @@ async function loadArticles() {
           const timeElement = link.querySelector('.article-time') || document.createElement('p');
           timeElement.classList.add('article-time');
           timeElement.textContent = `Posted: ${formatTimestamp(article.createdAt)}`;
-          link.appendChild(timeElement);
+          if (!link.querySelector('.article-time')) {
+            link.appendChild(timeElement);
+          }
           if (article.verified && element.classList.contains('fact-check-card')) {
             const badge = element.querySelector('.verified-badge') || document.createElement('span');
             badge.classList.add('verified-badge');
