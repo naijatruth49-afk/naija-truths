@@ -770,7 +770,9 @@ main {
 
 #article-form button,
 #admin-login-form button,
-#logout-button {
+#logout-button,
+.edit-button,
+.delete-button {
     padding: 0.5rem 1rem;
     background: #28a745;
     color: #fff;
@@ -778,15 +780,29 @@ main {
     border-radius: 5px;
     font-weight: 700;
     cursor: pointer;
+    margin-right: 0.5rem;
 }
 
 #article-form button:hover,
 #admin-login-form button:hover,
 #logout-button:hover,
+.edit-button:hover,
+.delete-button:hover,
 #article-form button:focus,
 #admin-login-form button:focus,
-#logout-button:focus {
+#logout-button:focus,
+.edit-button:focus,
+.delete-button:focus {
     background: #1a3c34;
+}
+
+.delete-button {
+    background: #d32f2f; /* Red color to indicate deletion */
+}
+
+.delete-button:hover,
+.delete-button:focus {
+    background: #b71c1c; /* Darker red on hover/focus */
 }
 
 #preview-section {
