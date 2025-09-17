@@ -28,7 +28,7 @@ const firebaseConfig = {
 async function initializeFirebase() {
   try {
     if (!window.env?.VITE_FIREBASE_API_KEY) {
-      throw new Error("Firebase API key is missing. Check environment variables in Netlify or HTML script tag.");
+      throw new Error("Firebase API key is missing. Ensure environment variables are set in Netlify (VITE_FIREBASE_*) or in your HTML script tag.");
     }
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
@@ -37,7 +37,7 @@ async function initializeFirebase() {
     console.log('Firebase initialized successfully');
   } catch (error) {
     console.error('Firebase initialization failed:', error.message);
-    displayErrorMessage('body', 'Failed to connect to the database. Please check your internet connection or refresh the page.');
+    displayErrorMessage('body', 'Failed to connect to the database. Check your Firebase environment variables in Netlify or refresh the page.');
   }
 }
 
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Load articles for homepage
 async function loadArticles() {
   if (!db) {
-    displayErrorMessage('.content', 'Unable to load articles. Database not initialized.');
+    displayErrorMessage('.content', 'Unable to load articles: Database not initialized. Check Firebase configuration in Netlify.');
     return;
   }
   const sections = [
@@ -149,17 +149,67 @@ async function loadArticles() {
     if (sort) q = query(q, orderBy(sort.field, sort.direction));
     q = query(q, limit(lim));
     try {
+      console.log(`Executing query for ${selector} with filter:`, filter, 'orderBy:', sort);
       const snapshot = await withRetry(() => getDocs(q));
       console.log(`Loaded ${snapshot.size} articles for ${selector}`, snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       if (snapshot.empty) {
         console.warn(`No articles found for ${selector} with filter:`, filter);
-        if (selector !== '#trending-list') {
+        // Fallback for breaking news: fetch the most recent article if no breaking news found
+        if (selector === '.breaking-news-card') {
+          console.log('No breaking news articles found, attempting fallback to latest article');
+          let fallbackQuery = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(1));
+          const fallbackSnapshot = await withRetry(() => getDocs(fallbackQuery));
+          console.log(`Fallback query loaded ${fallbackSnapshot.size} articles`, fallbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          if (!fallbackSnapshot.empty) {
+            const article = fallbackSnapshot.docs[0].data();
+            const docId = fallbackSnapshot.docs[0].id;
+            const element = elements[0];
+            if (element && element.dataset.placeholder === 'true') {
+              element.dataset.id = docId;
+              const link = element.querySelector('.article-link');
+              const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/400x200';
+              console.log(`Rendering fallback breaking news article ID: ${docId}, Image URL: ${imageUrl}, CreatedAt:`, article.createdAt);
+              const img = link.querySelector('img');
+              img.src = ''; // Clear src to avoid stale images
+              img.src = imageUrl;
+              img.alt = article.title || 'Article Image';
+              img.removeAttribute('srcset');
+              img.removeAttribute('sizes');
+              img.onerror = () => {
+                console.warn(`Fallback image failed to load for article ID: ${docId}, URL: ${imageUrl}`);
+                img.src = 'https://via.placeholder.com/400x200';
+              };
+              img.onload = () => {
+                console.log(`Fallback image loaded successfully for article ID: ${docId}, URL: ${img.src}`);
+                img.style.display = 'block';
+              };
+              link.setAttribute('href', `article.html?id=${docId}`);
+              link.querySelector('h2, h3').textContent = article.title || 'Untitled Article';
+              link.querySelector('p').textContent = article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No summary available');
+              const timeElement = link.querySelector('.article-time') || document.createElement('p');
+              timeElement.classList.add('article-time');
+              timeElement.textContent = `Posted: ${formatTimestamp(article.createdAt)}`;
+              if (!link.querySelector('.article-time')) {
+                link.appendChild(timeElement);
+              }
+              const badge = element.querySelector('.breaking-news-badge');
+              if (badge) badge.style.display = 'none'; // Hide breaking news badge for fallback
+              element.dataset.placeholder = 'false';
+            }
+          } else {
+            console.warn('No fallback articles available for breaking news');
+            elements.forEach(element => {
+              element.innerHTML = '<p>No breaking news available at this time.</p>';
+              element.dataset.placeholder = 'false';
+            });
+          }
+        } else if (selector === '#trending-list') {
+          elements[0].innerHTML = '<li>No trending stories available.</li>';
+        } else {
           elements.forEach(element => {
             element.innerHTML = '<p>No articles available.</p>';
             element.dataset.placeholder = 'false';
           });
-        } else {
-          elements[0].innerHTML = '<li>No trending stories available.</li>';
         }
         continue;
       }
@@ -174,7 +224,7 @@ async function loadArticles() {
           console.log(`Rendering ${selector} article ID: ${doc.id}, Image URL: ${imageUrl}, CreatedAt:`, article.createdAt);
           const img = link.querySelector('img');
           img.src = ''; // Clear src to avoid stale images
-          img.src = imageUrl; // Set new src
+          img.src = imageUrl;
           img.alt = article.title || 'Article Image';
           // Remove srcset and sizes for Breaking News and Fact Check to simplify
           if (selector === '.breaking-news-card' || selector === '.fact-check-card') {
@@ -241,8 +291,16 @@ async function loadArticles() {
         index++;
       }
     } catch (error) {
-      console.error(`Error loading ${selector}:`, error.message);
-      displayErrorMessage(selector, 'Failed to load articles. Please try again.');
+      console.error(`Error loading ${selector}:`, error.message, error.code);
+      let errorMessage = `Failed to load articles for ${selector}: ${error.message}. `;
+      if (error.code === 'permission-denied') {
+        errorMessage += 'Check Firestore security rules to ensure public read access to the "articles" collection.';
+      } else if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+        errorMessage += 'Network issue detected. Check your internet connection or Netlify configuration.';
+      } else {
+        errorMessage += 'Verify the Firestore "articles" collection or try refreshing the page.';
+      }
+      displayErrorMessage(selector, errorMessage);
     }
   }
 
