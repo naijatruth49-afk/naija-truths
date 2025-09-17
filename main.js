@@ -1,11 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, updateDoc, increment, addDoc, serverTimestamp, getDoc, startAfter } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, updateDoc, increment, addDoc, serverTimestamp, getDoc, startAfter, deleteDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
 
 let db;
 let auth;
-let storage;
 let quill;
 let lastVisibleLatest = null;
 let lastVisiblePolitics = null;
@@ -33,7 +31,6 @@ async function initializeFirebase() {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
-    storage = getStorage(app);
     console.log('Firebase initialized successfully');
   } catch (error) {
     console.error('Firebase initialization failed:', error.message);
@@ -832,9 +829,7 @@ if (articleForm) {
     const title = document.getElementById('article-title-input').value;
     const summary = document.getElementById('article-summary-input').value;
     const content = quill ? quill.root.innerHTML : document.getElementById('article-content-input')?.value || '';
-    const imageFile = document.getElementById('article-image-file')?.files[0];
     const imageUrl = document.getElementById('article-image-input').value;
-    const videoFile = document.getElementById('article-video-file')?.files[0];
     const videoUrl = document.getElementById('article-video-input').value;
     const category = document.getElementById('article-category-input').value;
     const breakingNews = document.getElementById('article-breaking-news-input').checked;
@@ -861,42 +856,13 @@ if (articleForm) {
       return;
     }
 
-    let finalImageUrl = imageUrl;
-    let finalVideoUrl = videoUrl;
-
-    if (imageFile) {
-      const imageRef = ref(storage, `images/${Date.now()}_${imageFile.name}`);
-      try {
-        await uploadBytes(imageRef, imageFile);
-        finalImageUrl = await getDownloadURL(imageRef);
-        console.log('Image uploaded, URL:', finalImageUrl);
-      } catch (error) {
-        console.error('Image upload failed:', error.message);
-        displayErrorMessage('#article-form', 'Failed to upload image.');
-        return;
-      }
-    }
-
-    if (videoFile) {
-      const videoRef = ref(storage, `videos/${Date.now()}_${videoFile.name}`);
-      try {
-        await uploadBytes(videoRef, videoFile);
-        finalVideoUrl = await getDownloadURL(videoRef);
-        console.log('Video uploaded, URL:', finalVideoUrl);
-      } catch (error) {
-        console.error('Video upload failed:', error.message);
-        displayErrorMessage('#article-form', 'Failed to upload video.');
-        return;
-      }
-    }
-
     const article = {
       title,
       title_lowercase: title.toLowerCase(),
       summary,
       content,
-      image: finalImageUrl || '',
-      video: finalVideoUrl || '',
+      image: imageUrl || '',
+      video: videoUrl || '',
       category,
       breakingNews: !!breakingNews,
       verified: !!verified,
@@ -997,6 +963,24 @@ if (clearButton) {
   });
 }
 
+// Delete article
+async function deleteArticle(articleId) {
+  if (!db || !auth.currentUser) {
+    displayErrorMessage('#article-list', 'Not logged in or database not initialized.');
+    return;
+  }
+  if (confirm('Are you sure you want to delete this article? This action cannot be undone.')) {
+    try {
+      await withRetry(() => deleteDoc(doc(db, 'articles', articleId)));
+      alert('Article deleted successfully!');
+      loadAdminArticles(); // Refresh the article list
+    } catch (error) {
+      console.error('Error deleting article:', error.message);
+      displayErrorMessage('#article-list', 'Failed to delete article: ' + error.message);
+    }
+  }
+}
+
 // Load admin articles
 async function loadAdminArticles() {
   const articleList = document.getElementById('article-list');
@@ -1020,6 +1004,7 @@ async function loadAdminArticles() {
         ${article.breakingNews ? '<span class="breaking-news-badge">Breaking News</span>' : ''}
         ${article.verified ? '<span class="verified-badge">Verified</span>' : ''}
         <button class="edit-button" data-id="${doc.id}">Edit</button>
+        <button class="delete-button" data-id="${doc.id}">Delete</button>
       `;
       articleList.appendChild(articleElement);
     });
@@ -1047,6 +1032,12 @@ async function loadAdminArticles() {
           console.error('Error loading article for editing:', error.message);
           displayErrorMessage('#article-list', 'Failed to load article for editing. Please try again.');
         }
+      });
+    });
+    document.querySelectorAll('.delete-button').forEach(button => {
+      button.addEventListener('click', () => {
+        const articleId = button.dataset.id;
+        deleteArticle(articleId);
       });
     });
   } catch (error) {
