@@ -19,7 +19,6 @@
   <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js"></script>
   <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"></script>
   <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js"></script>
-  <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js"></script>
   <script>
     window.env = window.env || {};
     window.env.VITE_FIREBASE_API_KEY = 'AIzaSyDrzSgCHn53kfa4dJJVJhDD717v8SPozR0';
@@ -98,12 +97,8 @@
           <textarea id="article-summary-input"></textarea>
           <label for="article-content-input">Content:</label>
           <div id="article-content-input"></div>
-          <label for="article-image-file">Upload Image:</label>
-          <input type="file" id="article-image-file" accept="image/*">
           <label for="article-image-input">Image URL:</label>
           <input type="url" id="article-image-input">
-          <label for="article-video-file">Upload Video:</label>
-          <input type="file" id="article-video-file" accept="video/*">
           <label for="article-video-input">Video URL:</label>
           <input type="url" id="article-video-input">
           <label for="article-category-input">Category:</label>
