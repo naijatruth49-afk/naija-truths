@@ -481,49 +481,80 @@ async function loadArticle() {
     if (docSnap.exists()) {
       const article = docSnap.data();
       console.log('Article loaded successfully:', article.title, 'Verified:', article.verified, 'Breaking News:', article.breakingNews, 'Image:', article.image);
-      document.getElementById('article-title').textContent = article.title || 'Untitled Article';
+
+      const articleTitle = document.getElementById('article-title');
+      const articleMeta = document.getElementById('article-meta');
+      const articleImage = document.getElementById('article-image');
+      const articleVideo = document.getElementById('article-video');
+      const articleBreakingNews = document.getElementById('article-breaking-news');
+      const articleVerified = document.getElementById('article-verified');
+      const articleContent = document.getElementById('article-content');
+      const articleCard = document.querySelector('.article-card');
+      const likeCount = document.getElementById('like-count');
+
+      if (!articleTitle || !articleMeta || !articleContent || !articleCard || !likeCount) {
+        console.error('One or more required DOM elements are missing');
+        displayErrorMessage('#article-content', 'Failed to load article: Page elements are missing. Please check the HTML structure.');
+        return;
+      }
+
+      articleTitle.textContent = article.title || 'Untitled Article';
       document.querySelector('meta[property="og:title"]').setAttribute('content', article.title || 'Naija Truths Article');
       document.querySelector('meta[name="description"]').setAttribute('content', article.summary || (article.content ? article.content.substring(0, 160) : 'Article from Naija Truths'));
       document.querySelector('meta[property="og:description"]').setAttribute('content', article.summary || (article.content ? article.content.substring(0, 160) : 'Article from Naija Truths'));
       const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/1200x630';
       document.querySelector('meta[property="og:image"]').setAttribute('content', imageUrl);
       document.title = `Naija Truths - ${article.title || 'Article'}`;
-      const articleImage = document.getElementById('article-image');
-      if (article.image && isValidUrl(article.image)) {
-        articleImage.src = article.image;
-        articleImage.style.display = 'block';
-        articleImage.addEventListener('error', () => {
-          console.warn(`Article image failed to load for ID: ${articleId}, URL: ${article.image}`);
+
+      if (articleImage) {
+        if (article.image && isValidUrl(article.image)) {
+          articleImage.src = article.image;
+          articleImage.style.display = 'block';
+          articleImage.addEventListener('error', () => {
+            console.warn(`Article image failed to load for ID: ${articleId}, URL: ${article.image}`);
+            articleImage.src = 'https://via.placeholder.com/800x400';
+            articleImage.style.display = 'block';
+          });
+        } else {
           articleImage.src = 'https://via.placeholder.com/800x400';
           articleImage.style.display = 'block';
-        });
+        }
       } else {
-        articleImage.src = 'https://via.placeholder.com/800x400';
-        articleImage.style.display = 'block';
+        console.warn('Article image element not found');
       }
-      document.getElementById('article-meta').textContent = `By Anonymous on ${formatTimestamp(article.createdAt)}`;
-      document.getElementById('article-content').innerHTML = article.content || 'No content available';
-      const articleVideo = document.getElementById('article-video');
-      if (article.video && isValidUrl(article.video)) {
-        articleVideo.src = article.video;
-        articleVideo.style.display = 'block';
+
+      articleMeta.textContent = `By Anonymous on ${formatTimestamp(article.createdAt)}`;
+
+      if (articleContent) {
+        articleContent.innerHTML = article.content || 'No content available';
+      }
+
+      if (articleVideo) {
+        if (article.video && isValidUrl(article.video)) {
+          articleVideo.src = article.video;
+          articleVideo.style.display = 'block';
+        } else {
+          articleVideo.style.display = 'none';
+        }
       } else {
-        articleVideo.style.display = 'none';
+        console.warn('Article video element not found');
       }
-      const articleBreakingNews = document.getElementById('article-breaking-news');
-      if (article.breakingNews) {
-        articleBreakingNews.style.display = 'block';
+
+      if (articleBreakingNews) {
+        articleBreakingNews.style.display = article.breakingNews ? 'block' : 'none';
       } else {
-        articleBreakingNews.style.display = 'none';
+        console.warn('Breaking news badge element not found');
       }
-      const articleVerified = document.getElementById('article-verified');
-      if (article.verified) {
-        articleVerified.style.display = 'block';
+
+      if (articleVerified) {
+        articleVerified.style.display = article.verified ? 'block' : 'none';
       } else {
-        articleVerified.style.display = 'none';
+        console.warn('Verified badge element not found');
       }
-      document.querySelector('.article-card').dataset.id = articleId;
-      document.getElementById('like-count').textContent = article.likes || 0;
+
+      articleCard.dataset.id = articleId;
+      likeCount.textContent = article.likes || 0;
+
       await withRetry(() => updateDoc(docRef, { views: increment(1) }));
       loadComments(articleId);
     } else {
