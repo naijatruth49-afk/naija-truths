@@ -37,7 +37,6 @@
     <div class="spinner"></div>
   </div>
   <header class="header">
-    <!-- Header content identical to index.html -->
     <div class="logo">
       <svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -70,10 +69,6 @@
           <a href="index.html#politics" class="dropbtn" aria-haspopup="true" aria-expanded="false">Politics ▼</a>
           <div class="dropdown-content">
             <a href="category.html?cat=politics">All Politics</a>
-            <a href="category.html?cat=politics&subcat=elections">Elections</a>
-            <a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a>
-            <a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a>
-            <a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a>
           </div>
         </li>
         <li><a href="index.html#fact-check">Fact-Check</a></li>
@@ -107,10 +102,6 @@
         <li><a href="index.html" class="home-button" aria-label="Go to homepage">Home</a></li>
         <li><a href="index.html#breaking-news">Breaking News</a></li>
         <li><a href="index.html#politics">Politics</a></li>
-        <li><a href="category.html?cat=politics&subcat=elections">Elections</a></li>
-        <li><a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a></li>
-        <li><a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a></li>
-        <li><a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a></li>
         <li><a href="index.html#fact-check">Fact-Check</a></li>
         <li><a href="category.html?cat=economy-business">Economy & Business</a></li>
         <li><a href="category.html?cat=sports">Sports</a></li>
@@ -132,21 +123,14 @@
     <section class="category-section">
       <div class="content">
         <h1 id="category-title">Category</h1>
-        <nav class="subcategory-nav">
-          <ul id="subcategory-list">
-            <li><a href="category.html?cat=politics">All Politics</a></li>
-            <li><a href="category.html?cat=politics&subcat=elections">Elections</a></li>
-            <li><a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a></li>
-            <li><a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a></li>
-            <li><a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a></li>
-          </ul>
-        </nav>
         <div class="news-grid" id="category-articles" role="region" aria-live="polite">
           <article class="news-card" data-placeholder="true">
             <a href="#" class="article-link">
               <img src="https://via.placeholder.com/400x200" alt="Article Image" loading="lazy">
               <h3>Article Title</h3>
               <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+              <span class="breaking-news-badge" style="display: none;">Breaking News</span>
+              <span class="verified-badge" style="display: none;">Verified</span>
             </a>
           </article>
         </div>
