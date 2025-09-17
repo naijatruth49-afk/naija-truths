@@ -130,7 +130,7 @@ async function loadArticles() {
     return;
   }
   const sections = [
-    { selector: '.breaking-news-card', collection: 'articles', limit: 1, filter: { breakingNews: true } },
+    { selector: '.breaking-news-card', collection: 'articles', limit: 1, filter: { breakingNews: true }, orderBy: { field: 'createdAt', direction: 'desc' } },
     { selector: '.fact-check-card', collection: 'articles', limit: 2, filter: { category: 'fact-check', verified: true } },
     { selector: '#trending-list', collection: 'articles', limit: 5, filter: null, orderBy: { field: 'views', direction: 'desc' } }
   ];
@@ -199,17 +199,33 @@ async function loadArticles() {
           if (!link.querySelector('.article-time')) {
             link.appendChild(timeElement);
           }
-          if (article.verified && element.classList.contains('fact-check-card')) {
-            const badge = element.querySelector('.verified-badge') || document.createElement('span');
-            badge.classList.add('verified-badge');
-            badge.textContent = 'Verified';
-            link.appendChild(badge);
-          }
+          // Handle Breaking News badge
           if (article.breakingNews && element.classList.contains('breaking-news-card')) {
-            const badge = element.querySelector('.breaking-news-badge') || document.createElement('span');
-            badge.classList.add('breaking-news-badge');
-            badge.textContent = 'Breaking News';
-            link.appendChild(badge);
+            let badge = element.querySelector('.breaking-news-badge');
+            if (!badge) {
+              badge = document.createElement('span');
+              badge.classList.add('breaking-news-badge');
+              badge.textContent = 'Breaking News';
+              link.appendChild(badge);
+            }
+            badge.style.display = 'block'; // Ensure badge is visible
+          } else {
+            const badge = element.querySelector('.breaking-news-badge');
+            if (badge) badge.style.display = 'none';
+          }
+          // Handle Verified badge
+          if (article.verified && element.classList.contains('fact-check-card')) {
+            let badge = element.querySelector('.verified-badge');
+            if (!badge) {
+              badge = document.createElement('span');
+              badge.classList.add('verified-badge');
+              badge.textContent = 'Verified';
+              link.appendChild(badge);
+            }
+            badge.style.display = 'block';
+          } else {
+            const badge = element.querySelector('.verified-badge');
+            if (badge) badge.style.display = 'none';
           }
           element.dataset.placeholder = 'false';
           index++;
@@ -230,7 +246,8 @@ async function loadArticles() {
     }
   }
 
-  const breakingNewsQuery = query(collection(db, 'articles'), where('breakingNews', '==', true), limit(1));
+  // Update meta tags for breaking news
+  const breakingNewsQuery = query(collection(db, 'articles'), where('breakingNews', '==', true), orderBy('createdAt', 'desc'), limit(1));
   try {
     const snapshot = await withRetry(() => getDocs(breakingNewsQuery));
     if (!snapshot.empty) {
@@ -966,8 +983,8 @@ async function loadAdminArticles() {
           document.getElementById('article-image-input').value = article.image || '';
           document.getElementById('article-video-input').value = article.video || '';
           document.getElementById('article-category-input').value = article.category || '';
-          document.getElementById('article-breaking-news-input').checked = article.breakingNews || false;
-          document.getElementById('article-verified-input').checked = article.verified || false;
+          document.getElementById('article-breaking-news-input').checked = !!article.breakingNews; // Ensure boolean
+          document.getElementById('article-verified-input').checked = !!article.verified; // Ensure boolean
         } catch (error) {
           console.error('Error loading article for editing:', error.message);
           displayErrorMessage('#article-list', 'Failed to load article for editing. Please try again.');
