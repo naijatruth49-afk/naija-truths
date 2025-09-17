@@ -70,10 +70,6 @@
         <nav class="subcategory-nav">
           <ul>
             <li><a href="category.html?cat=politics">All Politics</a></li>
-            <li><a href="category.html?cat=politics&subcat=elections">Elections</a></li>
-            <li><a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a></li>
-            <li><a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a></li>
-            <li><a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a></li>
           </ul>
         </nav>
       </div>
@@ -127,10 +123,6 @@
           <a href="#politics" class="dropbtn" aria-haspopup="true" aria-expanded="false">Politics ▼</a>
           <div class="dropdown-content">
             <a href="category.html?cat=politics">All Politics</a>
-            <a href="category.html?cat=politics&subcat=elections">Elections</a>
-            <a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a>
-            <a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a>
-            <a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a>
           </div>
         </li>
         <li><a href="#fact-check">Fact-Check</a></li>
@@ -164,10 +156,6 @@
         <li><a href="index.html" class="home-button" aria-label="Go to homepage">Home</a></li>
         <li><a href="#breaking-news">Breaking News</a></li>
         <li><a href="#politics">Politics</a></li>
-        <li><a href="category.html?cat=politics&subcat=elections">Elections</a></li>
-        <li><a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a></li>
-        <li><a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a></li>
-        <li><a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a></li>
         <li><a href="#fact-check">Fact-Check</a></li>
         <li><a href="category.html?cat=economy-business">Economy & Business</a></li>
         <li><a href="category.html?cat=sports">Sports</a></li>
@@ -198,6 +186,8 @@
                  alt="Breaking News" loading="lazy">
             <h2>Breaking News: Major Event Unfolds</h2>
             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+            <p class="article-time">Posted: Unknown Date</p>
+            <span class="breaking-news-badge" style="display: none;">Breaking News</span>
           </a>
         </article>
       </div>
@@ -233,6 +223,7 @@
                    alt="Fact-Check 1" loading="lazy">
               <h3>Fact-Check: Claim Title 1</h3>
               <p>Investigating the truth behind recent claims. Lorem ipsum dolor sit amet.</p>
+              <p class="article-time">Posted: Unknown Date</p>
               <span class="verified-badge">Verified</span>
             </a>
           </article>
@@ -244,6 +235,7 @@
                    alt="Fact-Check 2" loading="lazy">
               <h3>Fact-Check: Claim Title 2</h3>
               <p>Debunking myths with evidence. Consectetur adipiscing elit, sed do eiusmod.</p>
+              <p class="article-time">Posted: Unknown Date</p>
               <span class="verified-badge">Verified</span>
             </a>
           </article>
@@ -256,7 +248,6 @@
         <h2>Latest News</h2>
         <select id="category-filter" aria-label="Filter news by category">
           <option value="">All Categories</option>
-          <option value="breaking-news">Breaking News</option>
           <option value="politics">Politics</option>
           <option value="fact-check">Fact-Check</option>
           <option value="economy-business">Economy & Business</option>
@@ -282,6 +273,7 @@
                    alt="News 2" loading="lazy">
               <h3>News Title 2</h3>
               <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
+              <p class="article-time">Posted: Unknown Date</p>
             </a>
           </article>
           <article class="news-card" data-placeholder="true">
@@ -292,6 +284,7 @@
                    alt="News 3" loading="lazy">
               <h3>News Title 3</h3>
               <p>Nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor.</p>
+              <p class="article-time">Posted: Unknown Date</p>
             </a>
           </article>
         </div>
