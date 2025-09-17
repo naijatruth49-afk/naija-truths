@@ -81,6 +81,12 @@ function isValidUrl(string) {
   }
 }
 
+// Format timestamp for display
+function formatTimestamp(timestamp) {
+  if (!timestamp || !timestamp.toDate) return 'Unknown Date';
+  return timestamp.toDate().toLocaleDateString();
+}
+
 // Initialize Quill editor
 document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('article-content-input') && typeof Quill !== 'undefined') {
@@ -107,19 +113,39 @@ async function loadArticles() {
     return;
   }
   const sections = [
-    { selector: '.breaking-news-card', collection: 'articles', limit: 1, filter: { category: 'breaking-news' } },
-    { selector: '.fact-check-card', collection: 'articles', limit: 2, filter: { category: 'fact-check' } },
+    { selector: '.breaking-news-card', collection: 'articles', limit: 1, filter: { breakingNews: true } },
+    { selector: '.fact-check-card', collection: 'articles', limit: 2, filter: { category: 'fact-check', verified: true } },
     { selector: '#trending-list', collection: 'articles', limit: 5, filter: null, orderBy: { field: 'views', direction: 'desc' } }
   ];
 
   for (const { selector, collection: coll, limit: lim, filter, orderBy: sort } of sections) {
     const elements = document.querySelectorAll(selector);
     let q = query(collection(db, coll));
-    if (filter) q = query(q, where('category', '==', filter.category));
+    if (filter) {
+      if (filter.breakingNews) {
+        q = query(q, where('breakingNews', '==', true));
+      } else {
+        q = query(q, where('category', '==', filter.category));
+        if (filter.verified) q = query(q, where('verified', '==', true));
+      }
+    }
     if (sort) q = query(q, orderBy(sort.field, sort.direction));
     q = query(q, limit(lim));
     try {
       const snapshot = await withRetry(() => getDocs(q));
+      console.log(`Loaded ${snapshot.size} articles for ${selector}`, snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      if (snapshot.empty) {
+        console.warn(`No articles found for ${selector} with filter:`, filter);
+        if (selector !== '#trending-list') {
+          elements.forEach(element => {
+            element.innerHTML = '<p>No articles available.</p>';
+            element.dataset.placeholder = 'false';
+          });
+        } else {
+          elements[0].innerHTML = '<li>No trending stories available.</li>';
+        }
+        continue;
+      }
       let index = 0;
       snapshot.forEach(doc => {
         const article = doc.data();
@@ -127,15 +153,43 @@ async function loadArticles() {
         if (element && element.dataset.placeholder === 'true') {
           element.dataset.id = doc.id;
           const link = element.querySelector('.article-link');
+          const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/400x200';
+          console.log(`Rendering ${selector} article ID: ${doc.id}, Image URL: ${imageUrl}`);
+          const img = link.querySelector('img');
+          img.src = ''; // Clear src to avoid stale images
+          img.src = imageUrl; // Set new src
+          img.alt = article.title || 'Article Image';
+          // Remove srcset and sizes for Breaking News and Fact Check to simplify
+          if (selector === '.breaking-news-card' || selector === '.fact-check-card') {
+            img.removeAttribute('srcset');
+            img.removeAttribute('sizes');
+          }
+          img.onerror = () => {
+            console.warn(`Image failed to load for article ID: ${doc.id}, URL: ${imageUrl}`);
+            img.src = 'https://via.placeholder.com/400x200';
+          };
+          img.onload = () => {
+            console.log(`Image loaded successfully for article ID: ${doc.id}, URL: ${img.src}`);
+            img.style.display = 'block'; // Ensure image is visible
+          };
           link.setAttribute('href', `article.html?id=${doc.id}`);
-          link.querySelector('img').src = article.image || 'https://via.placeholder.com/400x200';
-          link.querySelector('img').alt = article.title || 'Article Image';
           link.querySelector('h2, h3').textContent = article.title || 'Untitled Article';
           link.querySelector('p').textContent = article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No summary available');
+          // Add publication time
+          const timeElement = link.querySelector('.article-time') || document.createElement('p');
+          timeElement.classList.add('article-time');
+          timeElement.textContent = `Posted: ${formatTimestamp(article.createdAt)}`;
+          link.appendChild(timeElement);
           if (article.verified && element.classList.contains('fact-check-card')) {
             const badge = element.querySelector('.verified-badge') || document.createElement('span');
             badge.classList.add('verified-badge');
             badge.textContent = 'Verified';
+            link.appendChild(badge);
+          }
+          if (article.breakingNews && element.classList.contains('breaking-news-card')) {
+            const badge = element.querySelector('.breaking-news-badge') || document.createElement('span');
+            badge.classList.add('breaking-news-badge');
+            badge.textContent = 'Breaking News';
             link.appendChild(badge);
           }
           element.dataset.placeholder = 'false';
@@ -146,8 +200,10 @@ async function loadArticles() {
           element.appendChild(li);
         }
       });
-      if (selector === '#trending-list' && snapshot.empty) {
-        elements[0].innerHTML = '<li>No trending stories available.</li>';
+      while (index < elements.length && selector !== '#trending-list') {
+        elements[index].innerHTML = '<p>No articles available.</p>';
+        elements[index].dataset.placeholder = 'false';
+        index++;
       }
     } catch (error) {
       console.error(`Error loading ${selector}:`, error.message);
@@ -155,15 +211,17 @@ async function loadArticles() {
     }
   }
 
-  const breakingNewsQuery = query(collection(db, 'articles'), where('category', '==', 'breaking-news'), limit(1));
+  const breakingNewsQuery = query(collection(db, 'articles'), where('breakingNews', '==', true), limit(1));
   try {
     const snapshot = await withRetry(() => getDocs(breakingNewsQuery));
     if (!snapshot.empty) {
       const article = snapshot.docs[0].data();
+      const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/1200x630';
+      console.log('Breaking news meta image:', imageUrl);
       document.querySelector('meta[property="og:title"]').setAttribute('content', `Naija Truths - ${article.title || 'Breaking News'}`);
       document.querySelector('meta[name="description"]').setAttribute('content', article.summary || (article.content ? article.content.substring(0, 160) : 'Breaking news from Naija Truths'));
       document.querySelector('meta[property="og:description"]').setAttribute('content', article.summary || (article.content ? article.content.substring(0, 160) : 'Breaking news from Naija Truths'));
-      document.querySelector('meta[property="og:image"]').setAttribute('content', article.image || 'https://via.placeholder.com/1200x630');
+      document.querySelector('meta[property="og:image"]').setAttribute('content', imageUrl);
       document.title = `Naija Truths - ${article.title || 'Breaking News'}`;
     }
   } catch (error) {
@@ -212,16 +270,19 @@ async function fetchPoliticsArticles(reset = false) {
       const articleElement = document.createElement('article');
       articleElement.classList.add('news-card');
       articleElement.dataset.id = doc.id;
+      const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/400x200';
+      console.log(`Politics article ID: ${doc.id}, Image URL: ${imageUrl}`);
       articleElement.innerHTML = `
         <a href="article.html?id=${doc.id}" class="article-link">
-          <img src="${article.image || 'https://via.placeholder.com/400x200'}" 
-               srcset="${article.image ? `${article.image} 400w, ${article.image} 200w` : 'https://via.placeholder.com/400x200 400w, https://via.placeholder.com/200x100 200w'}" 
+          <img src="${imageUrl}" 
+               srcset="${article.image && isValidUrl(article.image) ? `${article.image} 400w, ${article.image} 200w` : 'https://via.placeholder.com/400x200 400w, https://via.placeholder.com/200x100 200w'}" 
                sizes="(max-width: 767px) 200px, 400px" 
                alt="${article.title || 'Article Image'}" loading="lazy">
           <h3>${article.title || 'Untitled Article'}</h3>
           <p>${article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No summary available')}</p>
+          <p class="article-time">Posted: ${formatTimestamp(article.createdAt)}</p>
+          ${article.breakingNews ? '<span class="breaking-news-badge">Breaking News</span>' : ''}
           ${article.verified ? '<span class="verified-badge">Verified</span>' : ''}
-          ${article.subcategory ? `<p class="subcategory">${article.subcategory.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</p>` : ''}
         </a>
       `;
       politicsArticles.appendChild(articleElement);
@@ -275,14 +336,18 @@ async function fetchLatestNewsArticles(reset = false, loadMoreButton) {
       const articleElement = document.createElement('article');
       articleElement.classList.add('news-card');
       articleElement.dataset.id = doc.id;
+      const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/400x200';
+      console.log(`Latest news article ID: ${doc.id}, Image URL: ${imageUrl}`);
       articleElement.innerHTML = `
         <a href="article.html?id=${doc.id}" class="article-link">
-          <img src="${article.image || 'https://via.placeholder.com/400x200'}" 
-               srcset="${article.image ? `${article.image} 400w, ${article.image} 200w` : 'https://via.placeholder.com/400x200 400w, https://via.placeholder.com/200x100 200w'}" 
+          <img src="${imageUrl}" 
+               srcset="${article.image && isValidUrl(article.image) ? `${article.image} 400w, ${article.image} 200w` : 'https://via.placeholder.com/400x200 400w, https://via.placeholder.com/200x100 200w'}" 
                sizes="(max-width: 767px) 200px, 400px" 
                alt="${article.title || 'Article Image'}" loading="lazy">
           <h3>${article.title || 'Untitled Article'}</h3>
           <p>${article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No summary available')}</p>
+          <p class="article-time">Posted: ${formatTimestamp(article.createdAt)}</p>
+          ${article.breakingNews ? '<span class="breaking-news-badge">Breaking News</span>' : ''}
           ${article.verified ? '<span class="verified-badge">Verified</span>' : ''}
         </a>
       `;
@@ -301,7 +366,6 @@ async function fetchLatestNewsArticles(reset = false, loadMoreButton) {
 async function loadCategoryArticles() {
   const urlParams = new URLSearchParams(window.location.search);
   const category = urlParams.get('cat');
-  const subcategory = urlParams.get('subcat');
   if (!db || !category) return;
 
   const categoryTitle = document.getElementById('category-title');
@@ -309,20 +373,19 @@ async function loadCategoryArticles() {
   if (!categoryTitle || !categoryArticles) return;
 
   const formattedCategory = category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  const formattedSubcategory = subcategory ? subcategory.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : '';
-  categoryTitle.textContent = subcategory ? `${formattedCategory} - ${formattedSubcategory}` : formattedCategory;
-  document.title = `Naija Truths - ${subcategory ? `${formattedCategory} - ${formattedSubcategory}` : formattedCategory}`;
-  document.querySelector('meta[name="description"]').setAttribute('content', `Explore ${subcategory ? `${formattedCategory} - ${formattedSubcategory}` : formattedCategory} news on Naija Truths.`);
-  document.querySelector('meta[property="og:title"]').setAttribute('content', `Naija Truths - ${subcategory ? `${formattedCategory} - ${formattedSubcategory}` : formattedCategory}`);
-  document.querySelector('meta[property="og:description"]').setAttribute('content', `Explore ${subcategory ? `${formattedCategory} - ${formattedSubcategory}` : formattedCategory} news on Naija Truths.`);
+  categoryTitle.textContent = formattedCategory;
+  document.title = `Naija Truths - ${formattedCategory}`;
+  document.querySelector('meta[name="description"]').setAttribute('content', `Explore ${formattedCategory} news on Naija Truths.`);
+  document.querySelector('meta[property="og:title"]').setAttribute('content', `Naija Truths - ${formattedCategory}`);
+  document.querySelector('meta[property="og:description"]').setAttribute('content', `Explore ${formattedCategory} news on Naija Truths.`);
   document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://via.placeholder.com/1200x630');
 
   lastVisibleCategory = null;
   categoryArticles.innerHTML = '';
-  await fetchCategoryArticles(category, subcategory, true);
+  await fetchCategoryArticles(category, true);
 }
 
-async function fetchCategoryArticles(category, subcategory, reset = false) {
+async function fetchCategoryArticles(category, reset = false) {
   const categoryArticles = document.getElementById('category-articles');
   const loadMoreButton = document.querySelector('.category-section .load-more-button');
   if (!db || !categoryArticles) return;
@@ -338,7 +401,6 @@ async function fetchCategoryArticles(category, subcategory, reset = false) {
     orderBy('createdAt', 'desc'),
     limit(articlesPerPage)
   );
-  if (subcategory) q = query(q, where('subcategory', '==', subcategory));
   if (lastVisibleCategory) q = query(q, startAfter(lastVisibleCategory));
 
   try {
@@ -354,14 +416,17 @@ async function fetchCategoryArticles(category, subcategory, reset = false) {
       const articleElement = document.createElement('div');
       articleElement.classList.add('news-card');
       articleElement.dataset.id = doc.id;
+      const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/400x200';
+      console.log(`Category article ID: ${doc.id}, Image URL: ${imageUrl}`);
       articleElement.innerHTML = `
         <a href="article.html?id=${doc.id}" class="article-link">
-          <img src="${article.image || 'https://via.placeholder.com/400x200'}" 
+          <img src="${imageUrl}" 
                alt="${article.title || 'Article Image'}" loading="lazy">
           <h3>${article.title || 'Untitled Article'}</h3>
           <p>${article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No summary available')}</p>
+          <p class="article-time">Posted: ${formatTimestamp(article.createdAt)}</p>
+          ${article.breakingNews ? '<span class="breaking-news-badge">Breaking News</span>' : ''}
           ${article.verified ? '<span class="verified-badge">Verified</span>' : ''}
-          ${article.subcategory ? `<p class="subcategory">${article.subcategory.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</p>` : ''}
         </a>
       `;
       categoryArticles.appendChild(articleElement);
@@ -379,7 +444,7 @@ async function fetchCategoryArticles(category, subcategory, reset = false) {
 async function loadArticle() {
   const urlParams = new URLSearchParams(window.location.search);
   const articleId = urlParams.get('id');
-  console.log('Attempting to load article with ID:', articleId); // Debug log
+  console.log('Attempting to load article with ID:', articleId);
   if (!db) {
     console.error('Database not initialized');
     displayErrorMessage('#article-content', 'Unable to load article: Database not initialized. Please check your Firebase configuration or internet connection.');
@@ -396,35 +461,41 @@ async function loadArticle() {
     const docSnap = await withRetry(() => getDoc(docRef));
     if (docSnap.exists()) {
       const article = docSnap.data();
-      console.log('Article loaded successfully:', article.title); // Debug log
+      console.log('Article loaded successfully:', article.title, 'Verified:', article.verified, 'Breaking News:', article.breakingNews, 'Image:', article.image);
       document.getElementById('article-title').textContent = article.title || 'Untitled Article';
       document.querySelector('meta[property="og:title"]').setAttribute('content', article.title || 'Naija Truths Article');
       document.querySelector('meta[name="description"]').setAttribute('content', article.summary || (article.content ? article.content.substring(0, 160) : 'Article from Naija Truths'));
       document.querySelector('meta[property="og:description"]').setAttribute('content', article.summary || (article.content ? article.content.substring(0, 160) : 'Article from Naija Truths'));
-      document.querySelector('meta[property="og:image"]').setAttribute('content', article.image || 'https://via.placeholder.com/1200x630');
+      const imageUrl = article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/1200x630';
+      document.querySelector('meta[property="og:image"]').setAttribute('content', imageUrl);
       document.title = `Naija Truths - ${article.title || 'Article'}`;
       const articleImage = document.getElementById('article-image');
-      if (article.image) {
+      if (article.image && isValidUrl(article.image)) {
         articleImage.src = article.image;
         articleImage.style.display = 'block';
+        articleImage.addEventListener('error', () => {
+          console.warn(`Article image failed to load for ID: ${articleId}, URL: ${article.image}`);
+          articleImage.src = 'https://via.placeholder.com/800x400';
+          articleImage.style.display = 'block';
+        });
       } else {
-        articleImage.style.display = 'none';
+        articleImage.src = 'https://via.placeholder.com/800x400';
+        articleImage.style.display = 'block';
       }
-      document.getElementById('article-meta').textContent = `By Anonymous on ${article.createdAt?.toDate().toLocaleDateString() || 'Unknown Date'}`;
+      document.getElementById('article-meta').textContent = `By Anonymous on ${formatTimestamp(article.createdAt)}`;
       document.getElementById('article-content').innerHTML = article.content || 'No content available';
       const articleVideo = document.getElementById('article-video');
-      if (article.video) {
+      if (article.video && isValidUrl(article.video)) {
         articleVideo.src = article.video;
         articleVideo.style.display = 'block';
       } else {
         articleVideo.style.display = 'none';
       }
-      const articleSubcategory = document.getElementById('article-subcategory');
-      if (article.subcategory) {
-        articleSubcategory.textContent = article.subcategory.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        articleSubcategory.style.display = 'block';
+      const articleBreakingNews = document.getElementById('article-breaking-news');
+      if (article.breakingNews) {
+        articleBreakingNews.style.display = 'block';
       } else {
-        articleSubcategory.style.display = 'none';
+        articleBreakingNews.style.display = 'none';
       }
       const articleVerified = document.getElementById('article-verified');
       if (article.verified) {
@@ -441,7 +512,7 @@ async function loadArticle() {
       displayErrorMessage('#article-content', `Article not found (ID: ${articleId}). It may have been deleted or the ID is incorrect. Check Firestore 'articles' collection or ensure the article exists.`);
     }
   } catch (error) {
-    console.error('Error loading article (ID:', articleId, '):', error.message, error.code); // Debug log with error code
+    console.error('Error loading article (ID:', articleId, '):', error.message, error.code);
     let errorMessage = `Failed to load article (ID: ${articleId}): ${error.message}. `;
     if (error.code === 'permission-denied') {
       errorMessage += 'Check Firestore security rules to ensure public read access to the "articles" collection.';
@@ -471,7 +542,7 @@ async function loadComments(articleId) {
       const commentElement = document.createElement('div');
       commentElement.classList.add('comment');
       commentElement.innerHTML = `
-        <p><strong>Anonymous</strong> on ${comment.timestamp?.toDate().toLocaleDateString() || 'Unknown Date'}</p>
+        <p><strong>Anonymous</strong> on ${formatTimestamp(comment.timestamp)}</p>
         <p>${comment.text}</p>
         <button class="reply-button" data-comment-id="${doc.id}" aria-label="Reply to comment">Reply</button>
         <div class="reply-list" data-comment-id="${doc.id}"></div>
@@ -527,7 +598,7 @@ async function loadReplies(articleId, commentId) {
       const replyElement = document.createElement('div');
       replyElement.classList.add('reply');
       replyElement.innerHTML = `
-        <p><strong>Anonymous</strong> on ${reply.timestamp?.toDate().toLocaleDateString() || 'Unknown Date'}</p>
+        <p><strong>Anonymous</strong> on ${formatTimestamp(reply.timestamp)}</p>
         <p>${reply.text}</p>
       `;
       replyList.appendChild(replyElement);
@@ -570,9 +641,12 @@ async function loadSearchResults() {
       articleElement.classList.add('news-card');
       articleElement.innerHTML = `
         <a href="article.html?id=${doc.id}" class="article-link">
-          <img src="${article.image || 'https://via.placeholder.com/400x200'}" alt="${article.title || 'Article Image'}" loading="lazy">
+          <img src="${article.image && isValidUrl(article.image) ? article.image : 'https://via.placeholder.com/400x200'}" alt="${article.title || 'Article Image'}" loading="lazy">
           <h3>${article.title || 'Untitled Article'}</h3>
           <p>${article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No summary available')}</p>
+          <p class="article-time">Posted: ${formatTimestamp(article.createdAt)}</p>
+          ${article.breakingNews ? '<span class="breaking-news-badge">Breaking News</span>' : ''}
+          ${article.verified ? '<span class="verified-badge">Verified</span>' : ''}
         </a>
       `;
       searchResults.appendChild(articleElement);
@@ -638,7 +712,7 @@ if (articleForm) {
     const videoFile = document.getElementById('article-video-file')?.files[0];
     const videoUrl = document.getElementById('article-video-input').value;
     const category = document.getElementById('article-category-input').value;
-    const subcategory = document.getElementById('article-subcategory-input')?.value || '';
+    const breakingNews = document.getElementById('article-breaking-news-input').checked;
     const verified = document.getElementById('article-verified-input').checked;
 
     if (!title || title.length < 5) {
@@ -670,6 +744,7 @@ if (articleForm) {
       try {
         await uploadBytes(imageRef, imageFile);
         finalImageUrl = await getDownloadURL(imageRef);
+        console.log('Image uploaded, URL:', finalImageUrl);
       } catch (error) {
         console.error('Image upload failed:', error.message);
         displayErrorMessage('#article-form', 'Failed to upload image.');
@@ -682,6 +757,7 @@ if (articleForm) {
       try {
         await uploadBytes(videoRef, videoFile);
         finalVideoUrl = await getDownloadURL(videoRef);
+        console.log('Video uploaded, URL:', finalVideoUrl);
       } catch (error) {
         console.error('Video upload failed:', error.message);
         displayErrorMessage('#article-form', 'Failed to upload video.');
@@ -697,12 +773,14 @@ if (articleForm) {
       image: finalImageUrl || '',
       video: finalVideoUrl || '',
       category,
-      subcategory: category === 'politics' ? subcategory : '',
-      verified,
+      breakingNews: !!breakingNews,
+      verified: !!verified,
       createdAt: serverTimestamp(),
       likes: 0,
       views: 0
     };
+
+    console.log('Submitting article:', article);
 
     try {
       if (id) {
@@ -734,7 +812,7 @@ if (previewButton) {
     const image = document.getElementById('article-image-input').value;
     const video = document.getElementById('article-video-input').value;
     const category = document.getElementById('article-category-input').value;
-    const subcategory = document.getElementById('article-subcategory-input')?.value || '';
+    const breakingNews = document.getElementById('article-breaking-news-input').checked;
     const verified = document.getElementById('article-verified-input').checked;
 
     if (!title || title.length < 5) {
@@ -761,17 +839,18 @@ if (previewButton) {
     document.getElementById('preview-title').textContent = title;
     document.getElementById('preview-summary').textContent = summary;
     document.getElementById('preview-content').innerHTML = content;
-    document.getElementById('preview-category').textContent = `${category}${subcategory ? ` - ${subcategory.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}` : ''}`;
+    document.getElementById('preview-category').textContent = category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    document.getElementById('preview-breaking-news').style.display = breakingNews ? 'block' : 'none';
     document.getElementById('preview-verified').style.display = verified ? 'block' : 'none';
     const previewImage = document.getElementById('preview-image');
-    if (image) {
+    if (image && isValidUrl(image)) {
       previewImage.src = image;
       previewImage.style.display = 'block';
     } else {
       previewImage.style.display = 'none';
     }
     const previewVideo = document.getElementById('preview-video');
-    if (video) {
+    if (video && isValidUrl(video)) {
       previewVideo.src = video;
       previewVideo.style.display = 'block';
     } else {
@@ -811,7 +890,9 @@ async function loadAdminArticles() {
       articleElement.innerHTML = `
         <h3>${article.title || 'Untitled Article'}</h3>
         <p>${article.summary || 'No summary available'}</p>
-        <p>${article.category}${article.subcategory ? ` - ${article.subcategory.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}` : ''}</p>
+        <p>${article.category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</p>
+        <p class="article-time">Posted: ${formatTimestamp(article.createdAt)}</p>
+        ${article.breakingNews ? '<span class="breaking-news-badge">Breaking News</span>' : ''}
         ${article.verified ? '<span class="verified-badge">Verified</span>' : ''}
         <button class="edit-button" data-id="${doc.id}">Edit</button>
       `;
@@ -835,8 +916,7 @@ async function loadAdminArticles() {
           document.getElementById('article-image-input').value = article.image || '';
           document.getElementById('article-video-input').value = article.video || '';
           document.getElementById('article-category-input').value = article.category || '';
-          const subcategoryInput = document.getElementById('article-subcategory-input');
-          if (subcategoryInput) subcategoryInput.value = article.subcategory || '';
+          document.getElementById('article-breaking-news-input').checked = article.breakingNews || false;
           document.getElementById('article-verified-input').checked = article.verified || false;
         } catch (error) {
           console.error('Error loading article for editing:', error.message);
@@ -972,9 +1052,8 @@ if (loadMoreCategoryButton) {
     loadMoreCategoryButton.textContent = 'Loading...';
     const urlParams = new URLSearchParams(window.location.search);
     const category = urlParams.get('cat');
-    const subcategory = urlParams.get('subcat');
     if (category) {
-      await fetchCategoryArticles(category, subcategory, false);
+      await fetchCategoryArticles(category, false);
     }
     loadMoreCategoryButton.disabled = false;
     loadMoreCategoryButton.textContent = 'Load More';
@@ -1078,7 +1157,6 @@ if (scrollToTop) {
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
   initializeFirebase().then(() => {
-    // Skip article loading for admin-login.html
     if (document.getElementById('admin-login-section')) {
       onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -1113,7 +1191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     } else {
-      // Load articles for other pages
       if (document.querySelector('.article-card')) {
         loadArticle();
       }
