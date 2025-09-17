@@ -21,7 +21,6 @@
   <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js"></script>
   <script type="module" src="https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js"></script>
   <script>
-    // Define environment variables for local testing
     window.env = window.env || {};
     window.env.VITE_FIREBASE_API_KEY = 'AIzaSyDrzSgCHn53kfa4dJJVJhDD717v8SPozR0';
     window.env.VITE_FIREBASE_AUTH_DOMAIN = 'naija-truths.firebaseapp.com';
@@ -61,10 +60,6 @@
           <a href="index.html#politics" class="dropbtn" aria-haspopup="true" aria-expanded="false">Politics ▼</a>
           <div class="dropdown-content">
             <a href="category.html?cat=politics">All Politics</a>
-            <a href="category.html?cat=politics&subcat=elections">Elections</a>
-            <a href="category.html?cat=politics&subcat=policy-governance">Policy & Governance</a>
-            <a href="category.html?cat=politics&subcat=democracy-civil-society">Democracy & Civil Society</a>
-            <a href="category.html?cat=politics&subcat=corruption-accountability">Corruption & Accountability</a>
           </div>
         </li>
         <li><a href="index.html#fact-check">Fact-Check</a></li>
@@ -114,7 +109,6 @@
           <label for="article-category-input">Category:</label>
           <select id="article-category-input" required>
             <option value="">Select Category</option>
-            <option value="breaking-news">Breaking News</option>
             <option value="politics">Politics</option>
             <option value="fact-check">Fact-Check</option>
             <option value="economy-business">Economy & Business</option>
@@ -131,16 +125,10 @@
             <option value="videos-documentaries">Videos & Documentaries</option>
             <option value="trending-stories">Trending Stories</option>
           </select>
-          <label for="article-subcategory-input">Subcategory (Politics only):</label>
-          <select id="article-subcategory-input">
-            <option value="">None</option>
-            <option value="elections">Elections</option>
-            <option value="policy-governance">Policy & Governance</option>
-            <option value="democracy-civil-society">Democracy & Civil Society</option>
-            <option value="corruption-accountability">Corruption & Accountability</option>
-          </select>
-          <label for="article-verified-input">Verified:</label>
-          <input type="checkbox" id="article-verified-input">
+          <label for="article-breaking-news-input" style="font-weight: bold; color: #ff4500;">Mark as Breaking News:</label>
+          <input type="checkbox" id="article-breaking-news-input" style="margin-bottom: 1rem;">
+          <label for="article-verified-input" style="font-weight: bold; color: #28a745;">Mark as Verified:</label>
+          <input type="checkbox" id="article-verified-input" style="margin-bottom: 1rem;">
           <button type="submit">Publish Article</button>
           <button type="button" id="preview-button">Preview</button>
           <button type="button" id="clear-button">Clear</button>
@@ -150,6 +138,7 @@
           <article class="article-card">
             <h1 id="preview-title"></h1>
             <p id="preview-category"></p>
+            <span id="preview-breaking-news" class="breaking-news-badge" style="display: none;">Breaking News</span>
             <span id="preview-verified" class="verified-badge" style="display: none;">Verified</span>
             <p id="preview-date"></p>
             <img id="preview-image" src="" alt="Preview Image" style="display: none;" loading="lazy">
